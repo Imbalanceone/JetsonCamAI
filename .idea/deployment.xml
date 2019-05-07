@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="rl@192.168.1.6:22">
+    <serverData>
+      <paths name="rl@192.168.1.6:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/rl/tensorflow1/models/research/object_detection" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

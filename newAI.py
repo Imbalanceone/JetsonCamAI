@@ -44,7 +44,7 @@ PATH_TO_CKPT = os.path.join(CWD_PATH, MODEL_NAME, 'frozen_inference_graph.pb')
 if CF.Debug > 0:
 	print("PATH_TO_CKPT = ", PATH_TO_CKPT)
 # Path to label map file
-PATH_TO_LABELS = os.path.join(CWD_PATH, ' training', 'labelmap.pbtxt')
+PATH_TO_LABELS = os.path.join(CWD_PATH, 'training', 'labelmap.pbtxt')
 if CF.Debug > 0:
 	print("PATH_TO_LABELS = ", PATH_TO_LABELS)
 # Path to video
@@ -93,7 +93,7 @@ detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
 # Number of objects detected
 num_detections = detection_graph.get_tensor_by_name('num_detections:0')
 
-def gstreamer_pipeline (capture_width=3820, capture_height=2464, display_width=1910, display_height=1232, framerate=1, flip_method=2) :
+def gstreamer_pipeline (capture_width=3820, capture_height=2464, display_width=1910, display_height=1232, framerate=5, flip_method=2) :
 	return ('nvarguscamerasrc ! '
 			'video/x-raw(memory:NVMM), '
 			'width=(int)%d, height=(int)%d, '
@@ -114,7 +114,7 @@ if CF.Source == "Video":
 	print(gstreamer_pipeline(flip_method=0))
 elif CF.Source == "Camera":
 	try:
-		video = cv2.VideoCapture(pipe, cv2.CAP_GSTREAMER)
+		video = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
 	except:
 		print("Fail load Camera")
 		sys.exit()
@@ -153,59 +153,64 @@ T = time.time()
 if CF.Debug > 0:
 	print("Start time = ", T)
 
-if video.isOpened():
+
+if Drawing == True:
 	window_handle = cv2.namedWindow('CSI Camera', cv2.WINDOW_AUTOSIZE)
-	while cv2.getWindowProperty('CSI Camera', 0) >= 0:
-		if (con == 0) and (time.time() - T >= 100.):
-			T = time.time()
-			print("try reconnect")
-			try:
-				sock.connect((SockIP, 9090))
-				con = 1
-			except:
-				print("reconnect fail")
-		# Acquire frame and expand frame dimensions to have shape: [1, None, None, 3]
-		# i.e. a single-column array, where each item in the column has the pixel RGB value
-		ret, frame = video.read()
-		frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-		if CF.Debug > 0:
-			print("frame")
-		frame_expanded = np.expand_dims(frame, axis=0)
-		if CF.Debug > 0:
-			print("frame_expanded")
-		# Perform the actual detection by running the model with the image as input
-		(boxes, scores, classes, num) = sess.run(
-			[detection_boxes, detection_scores, detection_classes, num_detections],
-			feed_dict={image_tensor: frame_expanded})
-		if CF.Debug > 0:
-			print("sess.run")
-		# Draw the results of the detection (aka 'visulaize the results')
+while video.isOpened():
+	if (con == 0) and (time.time() - T >= 100.):
+		T = time.time()
+		print("try reconnect")
+		try:
+			sock.connect((SockIP, 9090))
+			con = 1
+		except:
+			print("reconnect fail")
+	# Acquire frame and expand frame dimensions to have shape: [1, None, None, 3]
+	# i.e. a single-column array, where each item in the column has the pixel RGB value
+	if CF.Debug > 0:
+		print("start read frame")
+	ret, frame = video.read()
+	if CF.Debug > 0:
+		print("successful readed")
+	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+	if CF.Debug > 0:
+		print("frame")
+	frame_expanded = np.expand_dims(frame, axis=0)
+	if CF.Debug > 0:
+		print("frame_expanded")
+	# Perform the actual detection by running the model with the image as input
+	(boxes, scores, classes, num) = sess.run(
+		[detection_boxes, detection_scores, detection_classes, num_detections],
+		feed_dict={image_tensor: frame_expanded})
+	if CF.Debug > 0:
+		print("sess.run")
+	# Draw the results of the detection (aka 'visulaize the results')
+	#vis_util.visualize_boxes_and_labels_on_image_array(
+	#frame,
+	#np.squeeze(boxes),
+	#np.squeeze(classes).astype(np.int32),
+	#np.squeeze(scores),
+	#category_index,
+	#use_normalized_coordinates=True,
+	#line_thickness=4,
+	#min_score_thresh=0.80)
+	# All the results have been drawn on the frame, so it's time to display it.
+	JsonData = mf.GetJson(boxes, scores, classes)
+	JsonData += "|"
+	if CF.Debug > 0:
+		print(JsonData)
+	if (con == 1):
+		try:
+			sock.send(JsonData.encode())
+		except:
+			con = 0
+	if Drawing == True:
 		nboxes, nscores, nclasses = mf.CheckPredict(boxes, scores, classes, height, width)
-		#vis_util.visualize_boxes_and_labels_on_image_array(
-		#frame,
-		#np.squeeze(boxes),
-		#np.squeeze(classes).astype(np.int32),
-		#np.squeeze(scores),
-		#category_index,
-		#use_normalized_coordinates=True,
-		#line_thickness=4,
-		#min_score_thresh=0.80)
-		# All the results have been drawn on the frame, so it's time to display it.
-		JsonData = mf.GetJson(boxes, scores, classes)
-		JsonData += "|"
-		if CF.Debug > 0:
-			print(JsonData)
-		if (con == 1):
-			try:
-				sock.send(JsonData.encode())
-			except:
-				con = 0
-		if Drawing == True:
-			Draw(nboxes, nscores, nclasses)
-			frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-			cv2.imshow('CSI camera', frame)
-			if cv2.waitKey(30) == ord('q'):
-				break
+		Draw(nboxes, nscores, nclasses)
+		frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+		cv2.imshow('CSI camera', frame)
+		if cv2.waitKey(30) == ord('q'):
+			break
 # Clean up
 video.release()
 cv2.destroyAllWindows()
