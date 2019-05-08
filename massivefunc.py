@@ -48,9 +48,10 @@ def GetJson(boxes, scores, classes):
     nscores = scores[0][:i].copy()
     nclasses = classes[0][:i].copy()
     nboxes = np.rot90(nboxes, 1)
+
     data = np.vstack((nclasses, nscores, nboxes))
     JsonArr = data.tolist()
     JsonArr = json.dumps(JsonArr)
     if D > 0:
-        print(JsonArr)
+        print('json arr(from function)=',JsonArr)
     return JsonArr

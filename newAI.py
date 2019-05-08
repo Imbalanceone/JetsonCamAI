@@ -93,7 +93,7 @@ detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
 # Number of objects detected
 num_detections = detection_graph.get_tensor_by_name('num_detections:0')
 
-def gstreamer_pipeline (capture_width=3820, capture_height=2464, display_width=1910, display_height=1232, framerate=5, flip_method=2) :
+def gstreamer_pipeline (capture_width=3820, capture_height=2464, display_width=1910, display_height=1232, framerate=2, flip_method=2) :
 	return ('nvarguscamerasrc ! '
 			'video/x-raw(memory:NVMM), '
 			'width=(int)%d, height=(int)%d, '
@@ -114,7 +114,7 @@ if CF.Source == "Video":
 	print(gstreamer_pipeline(flip_method=0))
 elif CF.Source == "Camera":
 	try:
-		video = cv2.VideoCapture(gstreamer_pipeline(), cv2.CAP_GSTREAMER)
+		video = cv2.VideoCapture(pipe, cv2.CAP_GSTREAMER)
 	except:
 		print("Fail load Camera")
 		sys.exit()
@@ -152,7 +152,9 @@ except:
 T = time.time()
 if CF.Debug > 0:
 	print("Start time = ", T)
-
+for i in range (20):
+	ret, frame = video.read()
+	print('frame number:', i)
 
 if Drawing == True:
 	window_handle = cv2.namedWindow('CSI Camera', cv2.WINDOW_AUTOSIZE)
@@ -176,6 +178,7 @@ while video.isOpened():
 	if CF.Debug > 0:
 		print("frame")
 	frame_expanded = np.expand_dims(frame, axis=0)
+
 	if CF.Debug > 0:
 		print("frame_expanded")
 	# Perform the actual detection by running the model with the image as input
@@ -184,6 +187,9 @@ while video.isOpened():
 		feed_dict={image_tensor: frame_expanded})
 	if CF.Debug > 0:
 		print("sess.run")
+	for i in range (20):
+		ret, frame = video.read()
+		print('frame number:', i)
 	# Draw the results of the detection (aka 'visulaize the results')
 	#vis_util.visualize_boxes_and_labels_on_image_array(
 	#frame,
